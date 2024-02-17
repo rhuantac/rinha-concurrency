@@ -49,7 +49,7 @@ func HistoryHandler(db *mongo.Database) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, ErrorResponse{Message: "Transações não encontradas."})
 			return
 		}
-		var txs []model.Transaction
+		txs := make([]model.Transaction, 10)
 		cursor.All(c, &txs)
 
 		c.JSON(http.StatusOK, HistoryResponse{Balance: Balance{Total: user.CurrentBalance, Date: time.Now(), Limit: user.Limit}, Transactions: txs})
