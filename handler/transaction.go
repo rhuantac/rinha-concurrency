@@ -16,7 +16,7 @@ import (
 type TransactionRequest struct {
 	Value           int                   `json:"valor"`
 	TransactionType model.TransactionType `json:"tipo"`
-	Description     string                `json:"description"`
+	Description     string                `json:"descricao"`
 }
 type TransactionResponse struct {
 	Limit   int `json:"limite"`

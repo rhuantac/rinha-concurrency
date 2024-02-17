@@ -18,7 +18,8 @@ type Balance struct {
 }
 
 type HistoryResponse struct {
-	Balance Balance `json:"saldo"`
+	Balance      Balance       `json:"saldo"`
+	Transactions []model.Transaction `json:"ultimas_transacoes"`
 }
 
 func HistoryHandler(db *mongo.Database) gin.HandlerFunc {
@@ -35,12 +36,22 @@ func HistoryHandler(db *mongo.Database) gin.HandlerFunc {
 		var user model.User
 		result := usersColl.FindOne(c, filter)
 		result.Decode(&user)
-
 		if result.Err() != nil {
 			c.JSON(http.StatusNotFound, ErrorResponse{Message: "Cliente não encontrado."})
 			return
 		}
 
-		c.JSON(http.StatusOK, HistoryResponse{Balance: Balance{Total: user.CurrentBalance, Date: time.Now(), Limit: user.Limit}})
+		txColl := db.Collection("transactions")
+		sortStage := bson.D{{Key: "$sort", Value: bson.D{{Key: "created_at", Value: -1}}}}
+		limitStage := bson.D{{Key: "$limit", Value: 10}}
+		cursor, err := txColl.Aggregate(c, mongo.Pipeline{sortStage, limitStage})
+		if err != nil {
+			c.JSON(http.StatusNotFound, ErrorResponse{Message: "Transações não encontradas."})
+			return
+		}
+		var txs []model.Transaction
+		cursor.All(c, &txs)
+
+		c.JSON(http.StatusOK, HistoryResponse{Balance: Balance{Total: user.CurrentBalance, Date: time.Now(), Limit: user.Limit}, Transactions: txs})
 	}
 }
