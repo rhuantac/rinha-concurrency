@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,7 @@ func init() {
 }
 
 func main() {
+	log.Print("Initializing server")
 	mongoClient := config.SetupMongo()
 	defer config.DisconnectMongo(mongoClient)
 	internal.ClearDb(mongoClient)
@@ -24,6 +26,7 @@ func main() {
 
 	api.POST("/transacoes", handler.TransactionHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE"))))
 	api.GET("/extrato", handler.HistoryHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE"))))
-	router.Run(":3000")
+	log.Print("Running")
+	router.Run()
 
 }
