@@ -5,11 +5,15 @@ import (
 	"os"
 
 	"github.com/rhuantac/rinha-concurrency/internal/model"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func SeedDb(client *mongo.Client) {
 	db := client.Database(os.Getenv("MONGO_DATABASE"))
+	if err := db.CreateCollection(context.TODO(), "users"); err != nil { //If collection already exists, return
+		return
+	}
 	coll := db.Collection("users")
 	users := []interface{}{
 		model.User{ID: 1, Limit: 100000, InitialBalance: 0, CurrentBalance: 0},
@@ -20,6 +24,16 @@ func SeedDb(client *mongo.Client) {
 	}
 	_, err := coll.InsertMany(context.TODO(), users)
 
+	index := mongo.IndexModel{
+		Keys: bson.D{
+			{"created_at", -1},
+			{"_id", 1},
+		},
+	}
+	db.CreateCollection(context.TODO(), "transactions")
+	collTx := db.Collection("transactions")
+	collTx.Indexes().CreateOne(context.TODO(), index)
+	
 	if err != nil {
 		panic(err)
 	}
