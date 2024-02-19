@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redsync/redsync/v4"
 
 	"github.com/rhuantac/rinha-concurrency/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
@@ -27,7 +28,7 @@ type ErrorResponse struct {
 	Message string
 }
 
-func TransactionHandler(db *mongo.Database) gin.HandlerFunc {
+func TransactionHandler(db *mongo.Database, rs *redsync.Redsync) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		userId, err := strconv.Atoi(c.Param("id"))
@@ -50,6 +51,10 @@ func TransactionHandler(db *mongo.Database) gin.HandlerFunc {
 		filter := bson.D{{Key: "_id", Value: userId}}
 		update := bson.D{{Key: "$inc", Value: bson.D{{Key: "current_balance", Value: req.Value}}}}
 
+		mutex := rs.NewMutex(strconv.Itoa(userId), redsync.WithTries(9999))
+		if err := mutex.Lock(); err != nil {
+			log.Panicf("Error trying to acquire lock: %v", err)
+		}
 		var user model.User
 		result := usersColl.FindOne(c, filter)
 		result.Decode(&user)
@@ -73,6 +78,9 @@ func TransactionHandler(db *mongo.Database) gin.HandlerFunc {
 			log.Printf("Error updating user %d", userId)
 		}
 
+		if ok, err := mutex.Unlock(); !ok || err != nil {
+			log.Panicf("Unlock failed: %v", err)
+		}
 		tx := model.Transaction{
 			Value:           req.Value,
 			TransactionType: req.TransactionType,

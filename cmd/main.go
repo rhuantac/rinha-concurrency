@@ -20,11 +20,13 @@ func main() {
 	defer config.DisconnectMongo(mongoClient)
 	internal.ClearDb(mongoClient)
 	internal.SeedDb(mongoClient)
+
+	redisClient := config.SetupRedis()
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	api := router.Group("/clientes/:id")
 
-	api.POST("/transacoes", handler.TransactionHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE"))))
+	api.POST("/transacoes", handler.TransactionHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE")), redisClient))
 	api.GET("/extrato", handler.HistoryHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE"))))
 	log.Print("Running")
 	router.Run()

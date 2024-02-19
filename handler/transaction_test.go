@@ -26,7 +26,7 @@ func setupServer() *gin.Engine {
 	router := gin.Default()
 	api := router.Group("/clientes/:id")
 
-	api.POST("/transacoes", TransactionHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE"))))
+	api.POST("/transacoes", TransactionHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE")), config.SetupRedis()))
 	api.GET("/extrato", HistoryHandler(mongoClient.Database(os.Getenv("MONGO_DATABASE"))))
 	return router
 }
@@ -136,4 +136,21 @@ func TestTransactions(t *testing.T) {
 			t.Errorf("request didn't returned the right status code. Got %d expected %d", w.Code, wantedCode)
 		}
 	})
+}
+
+func BenchmarkTransactions(b *testing.B) {
+	router := setupServer()
+	accId := 1
+	endpoint := fmt.Sprintf("/clientes/%d/transacoes", accId)
+	testPayload, _ := json.Marshal(TransactionRequest{
+		Value:           500,
+		TransactionType: "d",
+		Description:     "Test transaction",
+	})
+
+	for i := 0; i < b.N; i++ {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(string(testPayload)))
+		router.ServeHTTP(w, req)
+	}	
 }
