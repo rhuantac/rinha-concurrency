@@ -54,7 +54,9 @@ func TestHistory(t *testing.T) {
 	t.Run("transactions are returned correctly", func(t *testing.T) {
 		router := setupServer()
 		accId := 1
+		accIdOther := 2
 		txEndpoint := fmt.Sprintf("/clientes/%d/transacoes", accId)
+		txEndpointOther := fmt.Sprintf("/clientes/%d/transacoes", accIdOther)
 		testPayload, _ := json.Marshal(TransactionRequest{
 			Value:           500,
 			TransactionType: "c",
@@ -63,6 +65,12 @@ func TestHistory(t *testing.T) {
 
 		for i := 0; i < 5; i++ {
 			req, _ := http.NewRequest(http.MethodPost, txEndpoint, strings.NewReader(string(testPayload)))
+			router.ServeHTTP(httptest.NewRecorder(), req)
+		}
+
+		//Add other user transactions
+		for i := 0; i < 5; i++ {
+			req, _ := http.NewRequest(http.MethodPost, txEndpointOther, strings.NewReader(string(testPayload)))
 			router.ServeHTTP(httptest.NewRecorder(), req)
 		}
 
